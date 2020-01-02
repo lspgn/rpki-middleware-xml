@@ -1,0 +1,68 @@
+version: '3'
+services:
+  middleware:
+    build: .
+    ports:
+      - 3000:3000
+    command:
+      - -bind
+      - :3000
+      - -bind.https=true
+      - -bind.tls.key
+      - /tmp/key.pem
+      - -bind.tls.cert
+      - /tmp/cert.pem
+      - -proxy
+      - krill2:3000
+    volumes:
+      - ./ssl/certm.pem:/tmp/cert.pem:ro
+      - ./ssl/keym.pem:/tmp/key.pem:ro
+      - ./ssl/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt
+  krill1:
+    image: nlnetlabs/krill:v0.4.1
+    ports:
+      - 3001:3000
+    environment:
+      - KRILL_FQDN=krill1:3000
+      - KRILL_USE_TA=true
+      - KRILL_AUTH_TOKEN=test
+    volumes:
+      - ./krill1.conf:/var/krill/data/krill.conf:ro
+      - ./data1:/var/krill/datatmp/
+      - ./ssl/cert1.pem:/var/krill/datatmp/ssl/cert.pem:ro
+      - ./ssl/key1.pem:/var/krill/datatmp/ssl/key.pem:ro
+      - ./ssl/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt
+  krill2:
+    image: nlnetlabs/krill:v0.4.1
+    ports:
+      - 3002:3000
+    environment:
+      - KRILL_FQDN=krill2:3000
+      - KRILL_AUTH_TOKEN=test
+    volumes:
+      - ./krill2.conf:/var/krill/data/krill.conf:ro
+      - ./data2:/var/krill/datatmp/
+      - ./ssl/cert2.pem:/var/krill/datatmp/ssl/cert.pem:ro
+      - ./ssl/key2.pem:/var/krill/datatmp/ssl/key.pem:ro
+      - ./ssl/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt
+  krillc1:
+    image: nlnetlabs/krill:v0.4.1
+    entrypoint: krillc
+    command:
+      - help
+    environment:
+      - KRILL_CLI_SERVER=https://krill1:3000/
+      - KRILL_CLI_TOKEN=test
+      - KRILL_CLI_MY_CA=ta
+    volumes:
+      - ./ssl/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt
+  krillc2:
+    image: nlnetlabs/krill:v0.4.1
+    entrypoint: krillc
+    command:
+      - help
+    environment:
+      - KRILL_CLI_SERVER=https://krill2:3000/
+      - KRILL_CLI_TOKEN=test
+    volumes:
+      - ./ssl/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt
